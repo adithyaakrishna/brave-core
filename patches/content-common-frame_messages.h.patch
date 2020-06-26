@@ -1,0 +1,22 @@
+diff --git a/content/common/frame_messages.h b/content/common/frame_messages.h
+index 118765f9323faae3782ea69d6063174dcf5c4373..131728edfcaf1f705b68c92c5a5e956e2a6f47e8 100644
+--- a/content/common/frame_messages.h
++++ b/content/common/frame_messages.h
+@@ -492,6 +492,17 @@ IPC_MESSAGE_ROUTED0(FrameMsg_SwapIn)
+ // commit, activation and frame swap of the current DOM tree in blink.
+ IPC_MESSAGE_ROUTED1(FrameMsg_VisualStateRequest, uint64_t /* id */)
+ 
++// #if BUILDFLAG(BRAVE_PAGE_GRAPH_ENABLED)
++// Record that a resource was blocked by an ad filter.
++IPC_MESSAGE_ROUTED2(FrameMsg_RegisterResourceBlockAd,
++                    GURL /* url */,
++                    std::string /* rule */)
++
++// Record that a resource was blocked by a tracker filter.
++IPC_MESSAGE_ROUTED2(FrameMsg_RegisterResourceBlockTracker,
++                    GURL /* url */,
++                    std::string /* host */)
++// #endif
+ // TODO(https://crbug.com/995428): Deprecated.
+ // Tells the renderer to reload the frame.
+ IPC_MESSAGE_ROUTED0(FrameMsg_Reload)

@@ -13,6 +13,8 @@
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "services/network/public/mojom/referrer_policy.mojom.h"
 
+#include "brave/components/brave_shields/common/block_decision.h"
+
 namespace content {
 struct Referrer;
 }
@@ -97,6 +99,18 @@ ControlType GetNoScriptControlType(HostContentSettingsMap* map,
                                    const GURL& url);
 
 bool IsSameOriginNavigation(const GURL& referrer, const GURL& target_url);
+
+void DispatchBlockedEventFromIO(const GURL& request_url,
+                                int render_frame_id,
+                                int render_process_id,
+                                int frame_tree_node_id,
+                                const BlockDecision* block_decision);
+
+void DispatchBlockedEvent(const GURL& request_url,
+                          int render_frame_id,
+                          int render_process_id,
+                          int frame_tree_node_id,
+                          const BlockDecision* block_decision);
 
 bool MaybeChangeReferrer(
     bool allow_referrers,

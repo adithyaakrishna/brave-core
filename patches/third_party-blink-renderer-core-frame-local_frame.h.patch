@@ -1,0 +1,34 @@
+diff --git a/third_party/blink/renderer/core/frame/local_frame.h b/third_party/blink/renderer/core/frame/local_frame.h
+index 30763d3fc998d67ca2326a7902d41ae9fda2e93d..c4edb397a1709d77629a8c9ef2bfb9b404fa8152 100644
+--- a/third_party/blink/renderer/core/frame/local_frame.h
++++ b/third_party/blink/renderer/core/frame/local_frame.h
+@@ -48,6 +48,7 @@
+ #include "third_party/blink/public/mojom/reporting/reporting.mojom-blink.h"
+ #include "third_party/blink/public/mojom/web_feature/web_feature.mojom-blink-forward.h"
+ #include "third_party/blink/public/platform/task_type.h"
++#include "third_party/blink/public/platform/web_rect.h"
+ #include "third_party/blink/public/web/web_script_execution_callback.h"
+ #include "third_party/blink/renderer/core/core_export.h"
+ #include "third_party/blink/renderer/core/dom/weak_identifier_map.h"
+@@ -359,12 +360,21 @@ class CORE_EXPORT LocalFrame final : public Frame,
+ 
+   // See viewport_intersection_state.mojom for more info on these
+   // methods.
++#if INSIDE_BLINK
+   IntRect RemoteViewportIntersection() const {
+     return IntRect(intersection_state_.viewport_intersection);
+   }
+   IntRect RemoteMainFrameIntersection() const {
+     return IntRect(intersection_state_.main_frame_intersection);
+   }
++#else
++  WebRect RemoteViewportIntersection() const {
++    return intersection_state_.viewport_intersection;
++  }
++  WebRect RemoteMainFrameIntersection() const {
++    return intersection_state_.main_frame_document_intersection;
++  }
++#endif
+   gfx::Transform RemoteMainFrameTransform() const {
+     return intersection_state_.main_frame_transform;
+   }

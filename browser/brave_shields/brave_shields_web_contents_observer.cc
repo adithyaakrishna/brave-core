@@ -45,6 +45,7 @@ using extensions::Event;
 using extensions::EventRouter;
 #endif
 
+using content::FrameTreeNode;
 using content::RenderFrameHost;
 using content::WebContents;
 
@@ -128,10 +129,48 @@ void BraveShieldsWebContentsObserver::AddBlockedSubresource(
 
 // static
 void BraveShieldsWebContentsObserver::DispatchBlockedEvent(
+    const BlockDecision* block_decision,
     const GURL& request_url,
     int frame_tree_node_id,
     const std::string& block_type) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+
+// #if BUILDFLAG(BRAVE_PAGE_GRAPH_ENABLED)
+  {
+    if (block_decision->IsAdBlockDecision() ||
+        block_decision->IsTrackerBlockDecision()) {
+      RenderFrameHost* rfh = nullptr;
+
+      FrameTreeNode* frame_tree_node =
+          FrameTreeNode::GloballyFindByID(frame_tree_node_id);
+      if (frame_tree_node) {
+        rfh = frame_tree_node->current_frame_host();
+      }
+
+      if (!rfh) {
+        rfh = RenderFrameHost::FromID(render_process_id, render_frame_id);
+      }
+
+      if (rfh) {
+        const AdBlockDecision* const ad_block_decision =
+            block_decision->AsAdBlockDecision();
+        if (ad_block_decision) {
+          rfh->RegisterResourceBlockAd(request_url, ad_block_decision->Rule());
+        }
+
+        const TrackerBlockDecision* const tracker_block_decision =
+            block_decision->AsTrackerBlockDecision();
+        if (tracker_block_decision) {
+          rfh->RegisterResourceBlockTracker(request_url,
+                                            tracker_block_decision->Host());
+        }
+      }
+    }
+  }
+// #endif
+
+  const char* block_type = block_decision->BlockType();
+  delete block_decision;
 
   auto subresource = request_url.spec();
   WebContents* web_contents =
