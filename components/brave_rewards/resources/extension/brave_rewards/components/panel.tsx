@@ -6,7 +6,7 @@ import * as React from 'react'
 import { bindActionCreators, Dispatch } from 'redux'
 import { connect } from 'react-redux'
 import { WalletAddIcon, BatColorIcon } from 'brave-ui/components/icons'
-import { WalletWrapper, WalletSummary, WalletSummarySlider, WalletPanel } from '../../../ui/components'
+import { AdaptiveCaptcha, WalletWrapper, WalletSummary, WalletSummarySlider, WalletPanel } from '../../../ui/components'
 import { Provider } from '../../../ui/components/profile'
 import { NotificationType } from '../../../ui/components/walletWrapper'
 import { RewardsNotificationType } from '../constants/rewards_panel_types'
@@ -95,7 +95,15 @@ export class Panel extends React.Component<Props, State> {
     }
   }
 
+  getScheduledCaptchaInfo = () => {
+    chrome.braveRewards.getScheduledCaptchaInfo((result: boolean, scheduledCaptcha: RewardsExtension.ScheduledCaptcha) => {
+      this.props.actions.onGetScheduledCaptchaInfo(result, scheduledCaptcha)
+    })
+  }
+
   startRewards () {
+    this.getScheduledCaptchaInfo()
+
     chrome.braveRewards.getACEnabled((enabled: boolean) => {
       this.props.actions.onEnabledAC(enabled)
     })
@@ -803,7 +811,17 @@ export class Panel extends React.Component<Props, State> {
     )
   }
 
-  render () {
+  getScheduledCaptcha = (scheduledCaptcha: RewardsExtension.ScheduledCaptcha) => {
+    return (
+      <AdaptiveCaptcha
+        url={scheduledCaptcha.url}
+        maxAttemptsExceeded={scheduledCaptcha.maxAttemptsExceeded}
+        onCaptchaAttempt={this.getScheduledCaptchaInfo}
+      />
+    )
+  }
+
+  getWalletWrapper = () => {
     const { pendingContributionTotal, enabledAC, externalWallet, balance, parameters } = this.props.rewardsPanelData
     const publisher: RewardsExtension.Publisher | undefined = this.getPublisher()
     const total = balance.total || 0
@@ -896,6 +914,15 @@ export class Panel extends React.Component<Props, State> {
         {this.showOnboarding()}
       </WalletWrapper>
     )
+  }
+
+  render () {
+    const { scheduledCaptcha } = this.props.rewardsPanelData
+    if (scheduledCaptcha.url) {
+      return this.getScheduledCaptcha(scheduledCaptcha)
+    } else {
+      return this.getWalletWrapper()
+    }
   }
 }
 

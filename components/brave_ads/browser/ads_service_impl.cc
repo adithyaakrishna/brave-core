@@ -40,6 +40,7 @@
 #include "bat/ads/resources/grit/bat_ads_resources.h"
 #include "bat/ads/statement_info.h"
 #include "brave/browser/brave_ads/notifications/ad_notification_platform_bridge.h"
+#include "brave/browser/brave_ads/tooltips/ads_tooltips_controller.h"
 #include "brave/browser/brave_browser_process.h"
 #include "brave/browser/brave_rewards/rewards_service_factory.h"
 #include "brave/browser/profiles/profile_util.h"
@@ -68,6 +69,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/common/chrome_paths.h"
+#include "components/grit/brave_components_strings.h"
 #if !defined(OS_ANDROID)
 #include "chrome/browser/fullscreen.h"
 #include "chrome/browser/ui/browser.h"
@@ -111,14 +113,15 @@ namespace {
 
 const unsigned int kRetriesCountOnNetworkChange = 1;
 
-}  // namespace
-
-namespace {
-
 constexpr char kAdNotificationUrlPrefix[] = "https://www.brave.com/ads/?";
 
 static std::map<std::string, int> g_schema_resource_ids = {
     {ads::g_catalog_schema_resource_id, IDR_ADS_CATALOG_SCHEMA}};
+
+const char kScheduledCaptchaTooltipId[] = "scheduled-captcha";
+
+// Pairs a payment id with a scheduled captcha id
+std::pair<std::string, std::string> g_scheduled_captcha;
 
 int GetSchemaResourceId(const std::string& name) {
   if (g_schema_resource_ids.find(name) != g_schema_resource_ids.end()) {
@@ -142,6 +145,23 @@ std::string URLMethodToRequestType(ads::UrlRequestMethod method) {
 
     case ads::UrlRequestMethod::PUT: {
       return "PUT";
+    }
+  }
+}
+
+brave_adaptive_captcha::Environment AdsEnvironmentToAdaptiveCaptchaEnvironment(
+    ads::Environment environment) {
+  switch (environment) {
+    case ads::Environment::DEVELOPMENT: {
+      return brave_adaptive_captcha::DEVELOPMENT;
+    }
+
+    case ads::Environment::STAGING: {
+      return brave_adaptive_captcha::STAGING;
+    }
+
+    case ads::Environment::PRODUCTION: {
+      return brave_adaptive_captcha::PRODUCTION;
     }
   }
 }
@@ -219,7 +239,8 @@ AdsServiceImpl::AdsServiceImpl(Profile* profile,
       display_service_(NotificationDisplayService::GetForProfile(profile_)),
       rewards_service_(
           brave_rewards::RewardsServiceFactory::GetForProfile(profile_)),
-      bat_ads_client_receiver_(new bat_ads::AdsClientMojoBridge(this)) {
+      bat_ads_client_receiver_(new bat_ads::AdsClientMojoBridge(this)),
+      adaptive_captcha_(profile_) {
   DCHECK(profile_);
   DCHECK(history_service_);
   DCHECK(brave::IsRegularProfile(profile_));
@@ -901,6 +922,8 @@ void AdsServiceImpl::SetEnvironment() {
 #endif
 
   bat_ads_service_->SetEnvironment(environment, base::NullCallback());
+  adaptive_captcha_.set_environment(
+      AdsEnvironmentToAdaptiveCaptchaEnvironment(environment));
 }
 
 void AdsServiceImpl::SetBuildChannel() {
@@ -1008,6 +1031,30 @@ void AdsServiceImpl::OnClickAdNotification(const std::string& notification_id) {
 
   bat_ads_->OnAdNotificationEvent(notification_id,
                                   ads::AdNotificationEventType::kClicked);
+}
+
+void AdsServiceImpl::OnShowTooltip(const std::string& tooltip_id) {}
+
+void AdsServiceImpl::OnOkButtonPressedForTooltip(
+    const std::string& tooltip_id) {
+  if (tooltip_id != kScheduledCaptchaTooltipId) {
+    return;
+  }
+
+  // User chose to solve the captcha now, so show it to initiate that process
+  rewards_service_->ShowScheduledCaptcha(g_scheduled_captcha.first,
+                                         g_scheduled_captcha.second);
+  g_scheduled_captcha = {"", ""};
+}
+
+void AdsServiceImpl::OnCancelButtonPressedForTooltip(
+    const std::string& tooltip_id) {
+  if (tooltip_id != kScheduledCaptchaTooltipId) {
+    return;
+  }
+
+  // In this context, cancel means snooze the captcha for now
+  rewards_service_->SnoozeScheduledCaptcha();
 }
 
 void AdsServiceImpl::MaybeOpenNewTabWithAd() {
@@ -1767,6 +1814,15 @@ void AdsServiceImpl::OnPrefsChanged(const std::string& pref) {
       if (!IsEnabled()) {
         SuspendP2AHistograms();
         VLOG(1) << "P2A histograms suspended";
+
+        // Close any open captcha tooltip
+        std::unique_ptr<AdsTooltipsController> ads_tooltips_controller =
+            std::make_unique<AdsTooltipsController>(profile_);
+        ads_tooltips_controller->CloseTooltip(kScheduledCaptchaTooltipId);
+
+        // Clear any scheduled captcha
+        g_scheduled_captcha = {"", ""};
+        rewards_service_->ClearScheduledCaptcha();
       }
 
       brave_rewards::p3a::UpdateAdsStateOnPreferenceChange(profile_->GetPrefs(),
@@ -2095,6 +2151,50 @@ void AdsServiceImpl::Load(const std::string& name, ads::LoadCallback callback) {
 std::string AdsServiceImpl::LoadResourceForId(const std::string& id) {
   const auto resource_id = GetSchemaResourceId(id);
   return LoadDataResourceAndDecompressIfNeeded(resource_id);
+}
+
+void AdsServiceImpl::GetScheduledCaptcha(
+    const std::string& payment_id,
+    ads::GetScheduledCaptchaCallback callback) {
+  adaptive_captcha_.GetScheduledCaptcha(
+      payment_id, base::BindOnce(&AdsServiceImpl::OnGetScheduledCaptcha,
+                                 AsWeakPtr(), std::move(callback)));
+}
+
+void AdsServiceImpl::OnGetScheduledCaptcha(
+    ads::GetScheduledCaptchaCallback callback,
+    const std::string& captcha_id) {
+  callback(captcha_id);
+}
+
+void AdsServiceImpl::ShowScheduledCaptchaNotification(
+    const std::string& payment_id,
+    const std::string& captcha_id) {
+  g_scheduled_captcha = {payment_id, captcha_id};
+
+  PrefService* pref_service = profile_->GetPrefs();
+  const int snooze_count = pref_service->GetInteger(
+      brave_rewards::prefs::kScheduledCaptchaSnoozeCount);
+
+  const std::u16string title = l10n_util::GetStringUTF16(
+      IDS_BRAVE_ADS_SCHEDULED_CAPTCHA_NOTIFICATION_TITLE);
+  const std::u16string body = l10n_util::GetStringUTF16(
+      IDS_BRAVE_ADS_SCHEDULED_CAPTCHA_NOTIFICATION_BODY);
+  const std::u16string ok_button_text = l10n_util::GetStringUTF16(
+      IDS_BRAVE_ADS_SCHEDULED_CAPTCHA_NOTIFICATION_OK_BUTTON_TEXT);
+
+  const std::u16string cancel_button_text = l10n_util::GetStringUTF16(
+      IDS_BRAVE_ADS_SCHEDULED_CAPTCHA_NOTIFICATION_CANCEL_BUTTON_TEXT);
+
+  brave_tooltips::BraveTooltipAttributes tooltip_attributes(
+      title, body, ok_button_text, cancel_button_text);
+  tooltip_attributes.set_cancel_button_enabled(snooze_count == 0);
+  auto captcha_tooltip = std::make_unique<brave_tooltips::BraveTooltip>(
+      kScheduledCaptchaTooltipId, tooltip_attributes, nullptr);
+
+  std::unique_ptr<AdsTooltipsController> ads_tooltips_controller =
+      std::make_unique<AdsTooltipsController>(profile_);
+  ads_tooltips_controller->ShowTooltip(std::move(captcha_tooltip));
 }
 
 ads::DBCommandResponsePtr RunDBTransactionOnFileTaskRunner(
