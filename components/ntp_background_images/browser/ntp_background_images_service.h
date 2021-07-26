@@ -120,10 +120,11 @@ class NTPBackgroundImagesService {
       const base::Value& component_info) const;
 
   void CacheTopSitesFaviconList();
-  void CheckSIComponentUpdate(const std::string& component_id);
+  void CheckImagesComponentUpdate(const std::string& component_id);
 
   // virtual for test.
   virtual void CheckSuperReferralComponent();
+  virtual void RegisterBackgroundImagesComponent();
   virtual void RegisterSponsoredImagesComponent();
   virtual void RegisterSuperReferralComponent();
   virtual void DownloadSuperReferralMappingTable();

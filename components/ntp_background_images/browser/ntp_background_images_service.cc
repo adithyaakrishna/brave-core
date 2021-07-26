@@ -26,6 +26,7 @@
 #include "brave/components/ntp_background_images/browser/ntp_background_images_component_installer.h"
 #include "brave/components/ntp_background_images/browser/ntp_background_images_data.h"
 #include "brave/components/ntp_background_images/browser/ntp_background_images_source.h"
+#include "brave/components/ntp_background_images/browser/ntp_sponsored_images_component_installer.h"
 #include "brave/components/ntp_background_images/browser/sponsored_images_component_data.h"
 #include "brave/components/ntp_background_images/browser/switches.h"
 #include "brave/components/ntp_background_images/browser/url_constants.h"
@@ -117,6 +118,7 @@ void NTPBackgroundImagesService::Init() {
              << " from local path at: " << forced_local_path.LossyDisplayName();
     OnComponentReady(false, forced_local_path);
   } else {
+    RegisterBackgroundImagesComponent();
     RegisterSponsoredImagesComponent();
   }
 
@@ -139,10 +141,38 @@ void NTPBackgroundImagesService::Init() {
 #endif
 }
 
-void NTPBackgroundImagesService::CheckSIComponentUpdate(
+void NTPBackgroundImagesService::CheckImagesComponentUpdate(
     const std::string& component_id) {
-  DVLOG(2) << __func__ << ": Check NTP SI component update";
+  DVLOG(2) << __func__ << ": Check NTP Images component update";
+  LOG(WARNING) << "NTPBackgroundImagesService::CheckImagesComponentUpdate" << ": Check NTP Images component update";
+  LOG(WARNING) << "NTPBackgroundImagesService::CheckImagesComponentUpdate: component_id" << component_id;
   BraveOnDemandUpdater::GetInstance()->OnDemandUpdate(component_id);
+}
+
+void NTPBackgroundImagesService::RegisterBackgroundImagesComponent() {
+  const auto& data = GetBackgroundImagesComponentData();
+
+  DVLOG(2) << __func__ << ": Start NTP BI component";
+  LOG(WARNING) << "NTPBackgroundImagesService::RegisterBackgroundImagesComponent" << ": Start NTP BI component";
+  LOG(WARNING) << "NTPBackgroundImagesService::RegisterBackgroundImagesComponent: data->component_base64_public_key" << data->component_base64_public_key;
+  LOG(WARNING) << "NTPBackgroundImagesService::RegisterBackgroundImagesComponent: data->component_id" << data->component_id;
+  RegisterNTPBackgroundImagesComponent(
+      component_update_service_,
+      data->component_base64_public_key,
+      data->component_id,
+      base::StringPrintf("NTP Background Images"),
+      base::BindRepeating(&NTPBackgroundImagesService::OnComponentReady,
+                          weak_factory_.GetWeakPtr(),
+                          false));
+  // SI component checks update more frequently than other components.
+  // By default, browser check update status every 5 hours.
+  // However, this background interval is too long for SI. Use 1 hour interval.
+  si_update_check_timer_.Start(
+      FROM_HERE,
+      base::TimeDelta::FromHours(kSIComponentUpdateCheckIntervalHours),
+      base::BindRepeating(&NTPBackgroundImagesService::CheckImagesComponentUpdate,
+                          base::Unretained(this),
+                          data->component_id));
 }
 
 void NTPBackgroundImagesService::RegisterSponsoredImagesComponent() {
@@ -156,7 +186,7 @@ void NTPBackgroundImagesService::RegisterSponsoredImagesComponent() {
   }
 
   DVLOG(2) << __func__ << ": Start NTP SI component";
-  RegisterNTPBackgroundImagesComponent(
+  RegisterNTPSponsoredImagesComponent(
       component_update_service_,
       data->component_base64_public_key,
       data->component_id,
@@ -170,7 +200,7 @@ void NTPBackgroundImagesService::RegisterSponsoredImagesComponent() {
   si_update_check_timer_.Start(
       FROM_HERE,
       base::TimeDelta::FromHours(kSIComponentUpdateCheckIntervalHours),
-      base::BindRepeating(&NTPBackgroundImagesService::CheckSIComponentUpdate,
+      base::BindRepeating(&NTPBackgroundImagesService::CheckImagesComponentUpdate,
                           base::Unretained(this),
                           data->component_id));
 }
