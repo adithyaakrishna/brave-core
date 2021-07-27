@@ -298,10 +298,6 @@ export const _DesktopWalletConcept = (args: { onboarding: boolean, locked: boole
     alert(`Account Name: ${name}, Private Key: ${key}`)
   }
 
-  const onConnectHardwareWallet = (hardware: 'Ledger' | 'Trezor') => {
-    alert(`Connecting to ${hardware} wallet`)
-  }
-
   const onToggleAddModal = () => {
     setShowAddModal(!showAddModal)
   }
@@ -452,7 +448,6 @@ export const _DesktopWalletConcept = (args: { onboarding: boolean, locked: boole
                           selectedUSDAssetPrice={selectedUSDAssetPrice}
                           selectedBTCAssetPrice={selectedBTCAssetPrice}
                           userAssetList={userAssetList}
-                          onConnectHardwareWallet={onConnectHardwareWallet}
                           onCreateAccount={onCreateAccount}
                           onImportAccount={onImportAccount}
                           isLoading={false}

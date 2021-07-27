@@ -309,10 +309,6 @@ function Container (props: Props) {
     }
   }
 
-  const onConnectHardwareWallet = () => {
-    // TODO (DOUGLAS): Add logic to connect a hardware wallet
-  }
-
   const onImportAccount = () => {
     // TODO (DOUGLAS): Add logic to import a secondary account
   }
@@ -381,7 +377,6 @@ function Container (props: Props) {
                   selectedTimeline={selectedTimeline}
                   transactions={transactions}
                   userAssetList={userAssetList}
-                  onConnectHardwareWallet={onConnectHardwareWallet}
                   onCreateAccount={onCreateAccount}
                   onImportAccount={onImportAccount}
                   isLoading={isFetchingPriceHistory}
