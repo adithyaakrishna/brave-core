@@ -5,7 +5,7 @@ export const StyledWrapper = styled('div') <{}>`
   align-items: center;
   justify-content: center;
   background-color: ${(p) => p.theme.color.background02};
-  height: 100vh;
+  height: 100%;
   width: 100%;
   min-width: 1200px;
  `
