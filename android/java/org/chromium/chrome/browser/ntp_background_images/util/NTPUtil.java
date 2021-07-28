@@ -299,6 +299,7 @@ public class NTPUtil {
             InputStream inputStream = null;
             try {
                 Uri imageFileUri = Uri.parse("file://" + mWallpaper.getImagePath());
+                Log.w("NTPUtil", "getWallpaperBitmap: imageFileUri: " + imageFileUri.toString());
                 inputStream = mContext.getContentResolver().openInputStream(imageFileUri);
                 imageBitmap = BitmapFactory.decodeStream(inputStream, null, options);
                 inputStream.close();

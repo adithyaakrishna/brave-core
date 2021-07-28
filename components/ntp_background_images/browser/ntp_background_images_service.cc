@@ -74,6 +74,8 @@ std::string HandleComponentData(const base::FilePath& installed_dir) {
   }
 
   bool success = base::ReadFileToString(json_path, &contents);
+  LOG(WARNING) << "HandleComponentData: success: " << success;
+  LOG(WARNING) << "HandleComponentData: contents.empty(): " << contents.empty();
   if (!success || contents.empty()) {
     DVLOG(2) << __func__ << ": cannot read json file " << json_path;
     return contents;
@@ -116,7 +118,7 @@ void NTPBackgroundImagesService::Init() {
     test_data_used_ = true;
     DVLOG(2) << __func__ << ": NTP SI test data will be loaded"
              << " from local path at: " << forced_local_path.LossyDisplayName();
-    OnComponentReady(false, forced_local_path);
+    OnComponentReady(false, true, forced_local_path);
   } else {
     RegisterBackgroundImagesComponent();
     RegisterSponsoredImagesComponent();
@@ -133,7 +135,7 @@ void NTPBackgroundImagesService::Init() {
       DVLOG(2) << __func__ << ": NTP SR test data will be loaded"
                << " from local path at: "
                << forced_local_path.LossyDisplayName();
-      OnComponentReady(false, forced_local_path);
+      OnComponentReady(false, true, forced_local_path);
     } else {
       CheckSuperReferralComponent();
     }
@@ -163,7 +165,7 @@ void NTPBackgroundImagesService::RegisterBackgroundImagesComponent() {
       base::StringPrintf("NTP Background Images"),
       base::BindRepeating(&NTPBackgroundImagesService::OnComponentReady,
                           weak_factory_.GetWeakPtr(),
-                          false));
+                          false, false));
   // SI component checks update more frequently than other components.
   // By default, browser check update status every 5 hours.
   // However, this background interval is too long for SI. Use 1 hour interval.
@@ -193,7 +195,7 @@ void NTPBackgroundImagesService::RegisterSponsoredImagesComponent() {
       base::StringPrintf("NTP Sponsored Images (%s)", data->region.c_str()),
       base::BindRepeating(&NTPBackgroundImagesService::OnComponentReady,
                           weak_factory_.GetWeakPtr(),
-                          false));
+                          false, true));
   // SI component checks update more frequently than other components.
   // By default, browser check update status every 5 hours.
   // However, this background interval is too long for SI. Use 1 hour interval.
@@ -217,7 +219,7 @@ void NTPBackgroundImagesService::CheckSuperReferralComponent() {
     if (!cached_data.empty()) {
       DVLOG(2) << __func__ << ": Initialized SR Data from cache.";
       sr_images_data_.reset(
-          new NTPBackgroundImagesData(cached_data, si_installed_dir_));
+          new NTPBackgroundImagesData(cached_data, si_installed_dir_, true));
     }
     return;
   }
@@ -338,7 +340,7 @@ void NTPBackgroundImagesService::RegisterSuperReferralComponent() {
                          theme_name.c_str()),
       base::BindRepeating(&NTPBackgroundImagesService::OnComponentReady,
                           weak_factory_.GetWeakPtr(),
-                          true));
+                          true, true));
 }
 
 void NTPBackgroundImagesService::DownloadSuperReferralMappingTable() {
@@ -425,8 +427,10 @@ bool NTPBackgroundImagesService::HasObserver(Observer* observer) {
 
 NTPBackgroundImagesData*
 NTPBackgroundImagesService::GetBackgroundImagesData(bool super_referral) const {
+  LOG(WARNING) << "NTPBackgroundImagesService::GetBackgroundImagesData: super_referral: " << super_referral;
   const bool is_sr_enabled =
       base::FeatureList::IsEnabled(features::kBraveNTPSuperReferralWallpaper);
+  LOG(WARNING) << "NTPBackgroundImagesService::GetBackgroundImagesData: is_sr_enabled: " << is_sr_enabled;
   if (is_sr_enabled) {
     if (super_referral) {
       if (sr_images_data_ && sr_images_data_->IsValid())
@@ -437,15 +441,24 @@ NTPBackgroundImagesService::GetBackgroundImagesData(bool super_referral) const {
     // Don't give SI data until we can confirm this is not SR.
     // W/o this check, NTP could show SI images before getting SR data at first
     // run.
+    local_pref_->Set(prefs::kNewTabPageCachedSuperReferralComponentInfo,
+                   base::Value(base::Value::Type::DICTIONARY));
     if (local_pref_->FindPreference(
           prefs::kNewTabPageCachedSuperReferralComponentInfo)->
-              IsDefaultValue())
+              IsDefaultValue()) {
+      LOG(WARNING) << "NTPBackgroundImagesService::GetBackgroundImagesData: kNewTabPageCachedSuperReferralComponentInfo->IsDefaultValue: " << (local_pref_->FindPreference(
+          prefs::kNewTabPageCachedSuperReferralComponentInfo)->
+              IsDefaultValue());
       return nullptr;
+    }
   } else {
     if (super_referral)
       return nullptr;
   }
 
+  LOG(WARNING) << "NTPBackgroundImagesService::GetBackgroundImagesData: si_images_data_ != nullptr: " << (si_images_data_ != nullptr);
+  if (si_images_data_)
+    LOG(WARNING) << "NTPBackgroundImagesService::GetBackgroundImagesData: si_images_data_->IsValid(): " << si_images_data_->IsValid();
   if (si_images_data_ && si_images_data_->IsValid())
     return si_images_data_.get();
 
@@ -454,31 +467,39 @@ NTPBackgroundImagesService::GetBackgroundImagesData(bool super_referral) const {
 
 void NTPBackgroundImagesService::OnComponentReady(
     bool is_super_referral,
+    bool is_sponsored_image,
     const base::FilePath& installed_dir) {
+  LOG(WARNING) << "NTPBackgroundImagesService::OnComponentReady: is_super_referral: " << is_super_referral;
+  LOG(WARNING) << "NTPBackgroundImagesService::OnComponentReady: is_sponsored_image: " << is_sponsored_image;
+  LOG(WARNING) << "NTPBackgroundImagesService::OnComponentReady: installed_dir: " << installed_dir;
   if (is_super_referral)
     sr_installed_dir_ = installed_dir;
   else
     si_installed_dir_ = installed_dir;
 
   DVLOG(2) << __func__ << (is_super_referral ? ": NPT SR Component is ready"
-                                             : ": NTP SI Component is ready");
+                                             : ": NTP SI/BI Component is ready");
 
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock()},
       base::BindOnce(&HandleComponentData, installed_dir),
       base::BindOnce(&NTPBackgroundImagesService::OnGetComponentJsonData,
-                     weak_factory_.GetWeakPtr(), is_super_referral));
+                     weak_factory_.GetWeakPtr(), is_super_referral, is_sponsored_image));
 }
 
 void NTPBackgroundImagesService::OnGetComponentJsonData(
     bool is_super_referral,
+    bool is_sponsored_image,
     const std::string& json_string) {
+  LOG(WARNING) << "NTPBackgroundImagesService::OnGetComponentJsonData: is_super_referral: " << is_super_referral;
+  LOG(WARNING) << "NTPBackgroundImagesService::OnGetComponentJsonData: is_sponsored_image: " << is_sponsored_image;
+  LOG(WARNING) << "NTPBackgroundImagesService::OnGetComponentJsonData: json_string: " << json_string;
   if (is_super_referral) {
     local_pref_->SetBoolean(
           prefs::kNewTabPageGetInitialSRComponentInProgress,
           false);
     sr_images_data_.reset(
-        new NTPBackgroundImagesData(json_string, sr_installed_dir_));
+        new NTPBackgroundImagesData(json_string, sr_installed_dir_, true));
     // |initial_sr_component_info_| has proper data only for initial component
     // downloading. After that, it's empty. In test, it's also empty.
     if (initial_sr_component_info_.is_dict()) {
@@ -490,7 +511,8 @@ void NTPBackgroundImagesService::OnGetComponentJsonData(
                            json_string);
   } else {
     si_images_data_.reset(new NTPBackgroundImagesData(json_string,
-                                                      si_installed_dir_));
+                                                      si_installed_dir_,
+                                                      is_sponsored_image));
   }
 
   if (is_super_referral && !sr_images_data_->IsValid()) {

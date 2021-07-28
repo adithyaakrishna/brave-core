@@ -17,6 +17,8 @@ ViewCounterModel::ViewCounterModel() {
 ViewCounterModel::~ViewCounterModel() = default;
 
 bool ViewCounterModel::ShouldShowBrandedWallpaper() const {
+  LOG(WARNING) << "ViewCounterModel::ShouldShowBrandedWallpaper: ignore_count_to_branded_wallpaper_: " << ignore_count_to_branded_wallpaper_;
+  LOG(WARNING) << "ViewCounterModel::ShouldShowBrandedWallpaper: count_to_branded_wallpaper_: " << count_to_branded_wallpaper_;
   if (ignore_count_to_branded_wallpaper_)
     return true;
 

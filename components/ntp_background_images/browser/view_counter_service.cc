@@ -109,14 +109,17 @@ void ViewCounterService::BrandedWallpaperWillBeDisplayed(
 
 NTPBackgroundImagesData*
 ViewCounterService::GetCurrentBrandedWallpaperData() const {
+  LOG(WARNING) << "ViewCounterService::GetCurrentBrandedWallpaperData: 0";
   auto* sr_data = service_->GetBackgroundImagesData(true /* for_sr */);
   if (sr_data && IsSuperReferralWallpaperOptedIn())
     return sr_data;
 
+  LOG(WARNING) << "ViewCounterService::GetCurrentBrandedWallpaperData: 2";
   return service_->GetBackgroundImagesData(false);
 }
 
 base::Value ViewCounterService::GetCurrentWallpaperForDisplay() const {
+  LOG(WARNING) << "ViewCounterService::GetCurrentWallpaperForDisplay: ShouldShowBrandedWallpaper: " << ShouldShowBrandedWallpaper();
   if (ShouldShowBrandedWallpaper()) {
     return GetCurrentWallpaper();
   }
@@ -125,6 +128,7 @@ base::Value ViewCounterService::GetCurrentWallpaperForDisplay() const {
 }
 
 base::Value ViewCounterService::GetCurrentWallpaper() const {
+  LOG(WARNING) << "ViewCounterService::GetCurrentWallpaper";
   if (GetCurrentBrandedWallpaperData()) {
     return GetCurrentBrandedWallpaperData()->GetBackgroundAt(
         model_.current_wallpaper_image_index());
@@ -232,6 +236,8 @@ void ViewCounterService::BrandedWallpaperLogoClicked(
 }
 
 bool ViewCounterService::ShouldShowBrandedWallpaper() const {
+  LOG(WARNING) << "ViewCounterService::ShouldShowBrandedWallpaper: IsBrandedWallpaperActive: " << IsBrandedWallpaperActive();
+  LOG(WARNING) << "ViewCounterService::ShouldShowBrandedWallpaper: ShouldShowBrandedWallpaper: " << model_.ShouldShowBrandedWallpaper();
   return IsBrandedWallpaperActive() && model_.ShouldShowBrandedWallpaper();
 }
 
@@ -241,6 +247,7 @@ void ViewCounterService::InitializeWebUIDataSource(
 }
 
 bool ViewCounterService::IsBrandedWallpaperActive() const {
+  LOG(WARNING) << "ViewCounterService::IsBrandedWallpaperActive: !GetCurrentBrandedWallpaperData: " << (!GetCurrentBrandedWallpaperData());
   if (!GetCurrentBrandedWallpaperData())
     return false;
 
@@ -251,9 +258,11 @@ bool ViewCounterService::IsBrandedWallpaperActive() const {
     return true;
 
   // We don't show SI if user disables bg image.
+  LOG(WARNING) << "ViewCounterService::IsBrandedWallpaperActive: kNewTabPageShowBackgroundImage: " << prefs_->GetBoolean(prefs::kNewTabPageShowBackgroundImage);
   if (!prefs_->GetBoolean(prefs::kNewTabPageShowBackgroundImage))
     return false;
 
+  LOG(WARNING) << "ViewCounterService::IsBrandedWallpaperActive: IsSponsoredImagesWallpaperOptedIn: " << IsSponsoredImagesWallpaperOptedIn();
   return IsSponsoredImagesWallpaperOptedIn();
 }
 

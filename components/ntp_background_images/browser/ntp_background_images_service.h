@@ -107,9 +107,9 @@ class NTPBackgroundImagesService {
   FRIEND_TEST_ALL_PREFIXES(NTPBackgroundImagesSourceTest,
                            BasicSuperReferralDataTest);
 
-  void OnComponentReady(bool is_super_referral,
+  void OnComponentReady(bool is_super_referral, bool is_sponsored_image,
                         const base::FilePath& installed_dir);
-  void OnGetComponentJsonData(bool is_super_referral,
+  void OnGetComponentJsonData(bool is_super_referral, bool is_sponsored_image,
                               const std::string& json_string);
   void OnMappingTableComponentReady(const base::FilePath& installed_dir);
   void OnPreferenceChanged(const std::string& pref_name);

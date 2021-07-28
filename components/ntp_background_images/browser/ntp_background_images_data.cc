@@ -121,66 +121,87 @@ NTPBackgroundImagesData::NTPBackgroundImagesData()
 
 NTPBackgroundImagesData::NTPBackgroundImagesData(
     const std::string& json_string,
-    const base::FilePath& installed_dir)
+    const base::FilePath& installed_dir,
+    bool is_sponsored_image)
     : NTPBackgroundImagesData() {
   absl::optional<base::Value> json_value = base::JSONReader::Read(json_string);
+  LOG(WARNING) << "NTPBackgroundImagesData::NTPBackgroundImagesData: !json_value: " << (!json_value);
   if (!json_value) {
     DVLOG(2) << "Read json data failed. Invalid JSON data";
     return;
   }
 
+  LOG(WARNING) << "NTPBackgroundImagesData::NTPBackgroundImagesData: 1";
   absl::optional<int> incomingSchemaVersion =
       json_value->FindIntKey(kSchemaVersionKey);
   const bool schemaVersionIsValid = incomingSchemaVersion &&
       *incomingSchemaVersion == kExpectedSchemaVersion;
   if (!schemaVersionIsValid) {
     DVLOG(2) << __func__ << "Incoming NTP background images data was not valid."
-             << " Schema version was "
-             << (incomingSchemaVersion ? std::to_string(*incomingSchemaVersion)
-                                       : "missing")
-             << ", but we expected " << kExpectedSchemaVersion;
+            << " Schema version was "
+            << (incomingSchemaVersion ? std::to_string(*incomingSchemaVersion)
+                                      : "missing")
+            << ", but we expected " << kExpectedSchemaVersion;
     return;
   }
+  if (is_sponsored_image) {
+    LOG(WARNING) << "NTPBackgroundImagesData::NTPBackgroundImagesData: 2";
 
-  if (auto* name = json_value->FindStringKey(kThemeNameKey)) {
-    theme_name = *name;
-    DVLOG(2) << __func__ << ": Theme name: " << theme_name;
-  }
+    if (auto* name = json_value->FindStringKey(kThemeNameKey)) {
+      theme_name = *name;
+      DVLOG(2) << __func__ << ": Theme name: " << theme_name;
+    }
 
-  if (auto* logo = json_value->FindDictKey(kLogoKey))
-    default_logo = GetLogoFromValue(installed_dir, GetURLPrefix(), -1, logo);
+    if (auto* logo = json_value->FindDictKey(kLogoKey))
+      default_logo = GetLogoFromValue(installed_dir, GetURLPrefix(), -1, logo);
 
-  if (auto* wallpapers = json_value->FindListKey(kWallpapersKey)) {
-    const int wallpaper_count = wallpapers->GetList().size();
-    for (int i = 0; i < wallpaper_count; ++i) {
-      const auto& wallpaper = wallpapers->GetList()[i];
-      Background background;
-      background.image_file =
-          installed_dir.AppendASCII(*wallpaper.FindStringKey(kImageURLKey));
+    if (auto* wallpapers = json_value->FindListKey(kWallpapersKey)) {
+      const int wallpaper_count = wallpapers->GetList().size();
+      for (int i = 0; i < wallpaper_count; ++i) {
+        const auto& wallpaper = wallpapers->GetList()[i];
+        Background background;
+        background.image_file =
+            installed_dir.AppendASCII(*wallpaper.FindStringKey(kImageURLKey));
 
-      if (auto* focalPoint = wallpaper.FindDictKey(kWallpaperFocalPointKey)) {
-        background.focal_point = { focalPoint->FindIntKey(kXKey).value_or(0),
-                                   focalPoint->FindIntKey(kYKey).value_or(0) };
+        if (auto* focalPoint = wallpaper.FindDictKey(kWallpaperFocalPointKey)) {
+          background.focal_point = { focalPoint->FindIntKey(kXKey).value_or(0),
+                                    focalPoint->FindIntKey(kYKey).value_or(0) };
+        }
+
+        if (auto* viewbox = wallpaper.FindDictKey(kViewboxKey)) {
+          gfx::Rect rect(viewbox->FindIntKey(kXKey).value_or(0),
+                        viewbox->FindIntKey(kYKey).value_or(0),
+                        viewbox->FindIntKey(kWidthKey).value_or(0),
+                        viewbox->FindIntKey(kHeightKey).value_or(0));
+          background.viewbox.emplace(rect);
+        }
+        if (auto* background_color = wallpaper.FindStringKey(kBackgroundColorKey))
+          background.background_color =  *background_color;
+        if (auto* creative_instance_id =
+                wallpaper.FindStringKey(kCreativeInstanceIDKey)) {
+          background.creative_instance_id =  *creative_instance_id;
+        }
+        if (auto* wallpaper_logo = wallpaper.FindDictKey(kLogoKey)) {
+          background.logo.emplace(GetLogoFromValue(
+              installed_dir, GetURLPrefix(), i, wallpaper_logo));
+        }
+        backgrounds.push_back(background);
       }
+    }
+  } else {
+    LOG(WARNING) << "NTPBackgroundImagesData::NTPBackgroundImagesData: BI";
 
-      if (auto* viewbox = wallpaper.FindDictKey(kViewboxKey)) {
-        gfx::Rect rect(viewbox->FindIntKey(kXKey).value_or(0),
-                       viewbox->FindIntKey(kYKey).value_or(0),
-                       viewbox->FindIntKey(kWidthKey).value_or(0),
-                       viewbox->FindIntKey(kHeightKey).value_or(0));
-        background.viewbox.emplace(rect);
+    if (auto* images = json_value->FindListKey(kImagesKey)) {
+      const int image_count = images->GetList().size();
+      LOG(WARNING) << "NTPBackgroundImagesData::NTPBackgroundImagesData: image_count: " << image_count;
+      for (int i = 0; i < image_count; ++i) {
+        const auto& image = images->GetList()[i];
+        Background background;
+        background.image_file =
+            installed_dir.AppendASCII(*image.FindStringKey(kImageSourceKey));
+
+        backgrounds.push_back(background);
       }
-      if (auto* background_color = wallpaper.FindStringKey(kBackgroundColorKey))
-        background.background_color =  *background_color;
-      if (auto* creative_instance_id =
-              wallpaper.FindStringKey(kCreativeInstanceIDKey)) {
-        background.creative_instance_id =  *creative_instance_id;
-      }
-      if (auto* wallpaper_logo = wallpaper.FindDictKey(kLogoKey)) {
-        background.logo.emplace(GetLogoFromValue(
-            installed_dir, GetURLPrefix(), i, wallpaper_logo));
-      }
-      backgrounds.push_back(background);
     }
   }
 
@@ -224,6 +245,8 @@ bool NTPBackgroundImagesData::IsSuperReferral() const {
 }
 
 base::Value NTPBackgroundImagesData::GetBackgroundAt(size_t index) {
+  LOG(WARNING) << "NTPBackgroundImagesData::GetBackgroundAt: index: " << index;
+  LOG(WARNING) << "NTPBackgroundImagesData::GetBackgroundAt: IsValid: " << IsValid();
   DCHECK(index >= 0 && index < wallpaper_image_urls().size());
 
   base::Value data(base::Value::Type::DICTIONARY);

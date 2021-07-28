@@ -132,14 +132,17 @@ base::android::ScopedJavaLocalRef<jobject>
 NTPBackgroundImagesBridge::CreateWallpaper() {
   JNIEnv* env = AttachCurrentThread();
 
+  LOG(WARNING) << "NTPBackgroundImagesBridge::CreateWallpaper";
   auto data = view_counter_service_
       ? view_counter_service_->GetCurrentWallpaperForDisplay()
       : base::Value();
+  LOG(WARNING) << "NTPBackgroundImagesBridge::CreateWallpaper: data.is_none(): " << data.is_none();
   if (data.is_none())
     return base::android::ScopedJavaLocalRef<jobject>();
 
   const std::string wallpaper_id = base::GenerateGUID();
   view_counter_service_->BrandedWallpaperWillBeDisplayed(wallpaper_id);
+  LOG(WARNING) << "NTPBackgroundImagesBridge::CreateWallpaper: wallpaper_id: " << wallpaper_id;
 
   auto* image_path =
       data.FindStringKey(ntp_background_images::kWallpaperImagePathKey);

@@ -69,7 +69,7 @@ struct Background {
 struct NTPBackgroundImagesData {
   NTPBackgroundImagesData();
   NTPBackgroundImagesData(const std::string& json_string,
-                          const base::FilePath& installed_dir);
+                          const base::FilePath& installed_dir, bool is_sponsored_image);
   NTPBackgroundImagesData(const NTPBackgroundImagesData& data);
   NTPBackgroundImagesData& operator=(const NTPBackgroundImagesData& data);
   ~NTPBackgroundImagesData();
