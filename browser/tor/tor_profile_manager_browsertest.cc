@@ -112,7 +112,11 @@ class TorProfileManagerTest : public InProcessBrowserTest {
 // supposedly flaky on Windows and Linux, which is why we won't run it on these
 // platforms.  See the following issue for more details:
 // http://crbug.com/130395
-#if defined(OS_WIN) || defined(OS_LINUX) || defined(OS_CHROMEOS)
+//
+// We also don't run this test on Mac because the function
+// GetCommandLineForRelaunch isn't defined there.
+#if defined(OS_WIN) || defined(OS_LINUX) || defined(OS_CHROMEOS) || \
+    defined(OS_MAC)
 #define MAYBE_LaunchWithTorUrl DISABLED_LaunchWithTorUrl
 #else
 #define MAYBE_LaunchWithTorUrl LaunchWithTorUrl
