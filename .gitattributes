@@ -1,0 +1,2 @@
+# Treat this patch as binary
+patches/*.idl.patch -text
