@@ -633,7 +633,7 @@ BATClassAdsBridge(BOOL, isDebug, setDebug, g_is_debug)
   ads->OnInlineContentAdEvent(
       base::SysNSStringToUTF8(uuid),
       base::SysNSStringToUTF8(creativeInstanceId),
-      static_cast<ads::mojom::BraveAdsInlineContentAdEventType>(eventType));
+      static_cast<ads::mojom::InlineContentAdEventType>(eventType));
 }
 
 - (void)reportPromotedContentAdEvent:(NSString*)uuid
@@ -654,7 +654,7 @@ BATClassAdsBridge(BOOL, isDebug, setDebug, g_is_debug)
     return;
   }
   ads->PurgeOrphanedAdEventsForType(
-      static_cast<ads::mojom::BraveAdsAdType>(adType));
+      static_cast<ads::mojom::AdType>(adType));
 }
 
 - (void)reconcileAdRewards {
