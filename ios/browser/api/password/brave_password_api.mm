@@ -6,6 +6,7 @@
 #include "brave/ios/browser/api/password/brave_password_api.h"
 
 #include "base/bind.h"
+#include "base/memory/ref_counted.h"
 #include "base/strings/sys_string_conversions.h"
 
 #include "components/keyed_service/core/service_access_type.h"
@@ -37,6 +38,7 @@
   base::Time date_created_;
   std::u16string username_value_;
   std::u16string password_value_;
+  password_manager::PasswordForm::Scheme password_form_scheme_;
 }
 @end
 
@@ -47,11 +49,12 @@
                 dateCreated:(NSDate*)dateCreated
               usernameValue:(NSString*)usernameValue
               passwordValue:(NSString*)passwordValue
-            isBlockedByUser:(bool)isBlockedByUser {
+            isBlockedByUser:(bool)isBlockedByUser
+                     scheme:(PasswordFormScheme)scheme {
   if ((self = [super init])) {
     [self setUrl:url];
 
-    if (signONRealm) {}
+    if (signOnRealm) {}
       [self setSignOnRealm:signOnRealm];
     }
 
@@ -68,6 +71,8 @@
     }
 
     self.isBlockedByUser = isBlockedByUser;
+
+    password_form_scheme_ = PasswordFormSchemeForPasswordFormDigest(scheme)
   }
 
   return self;
@@ -110,7 +115,14 @@
 }
 
 - (NSString*)passwordValue {
-  return base::SysUTF16ToNSString(passwordValue);
+  return base::SysUTF16ToNSString(password_value_);
+}
+- (void)setPasswordFormScheme:(PasswordFormScheme)passwordFormScheme {
+  password_form_scheme_ = PasswordFormSchemeForPasswordFormDigest(passwordFormScheme);
+}
+
+- (PasswordFormScheme)passwordFormScheme {
+  return PasswordFormSchemeFromPasswordManagerScheme(password_form_scheme_);
 }
 @end
 
@@ -148,19 +160,16 @@ class PasswordStoreConsumerHelper: public password_manager::PasswordStoreConsume
 
 @implementation BravePasswordAPI
 
-- (instancetype)init {
+- (instancetype)initWithBrowserState(scoped_refptr<password_manager::PasswordStore>)passwordStore {
   if ((self = [super init])) {
     DCHECK_CURRENTLY_ON(web::WebThread::UI);
 
-    ios::ChromeBrowserStateManager* browserStateManager =
-      GetApplicationContext()->GetChromeBrowserStateManager();
-    ChromeBrowserState* chromeBrowserState =
-      browserStateManager->GetLastUsedBrowserState();
+    password_store_ = passwordStore;
 
-    password_store_ = IOSChromePasswordStoreFactory::GetForBrowserState(
-      chromeBrowserState),
-      ServiceAccessType::EXPLICIT_ACCESS)
-        .get();
+    // password_store_ = IOSChromePasswordStoreFactory::GetForBrowserState(
+    //   browserState),
+    //   ServiceAccessType::EXPLICIT_ACCESS)
+    //     .get();
 
   }
   return self;
@@ -202,14 +211,24 @@ class PasswordStoreConsumerHelper: public password_manager::PasswordStoreConsume
     passwordCredentialForm.signon_realm = passwordCredentialForm.url.spec();
   } 
 
-  passwordCredentialForm.scheme = password_manager::PasswordForm::Scheme::kHtml;
+  if (passwordForm.usernameValue && !passwordForm.passwordValue) {
+      passwordCredentialForm.scheme = password_manager::PasswordForm::Scheme::kUsernameOnly;
+  } else {
+    passwordCredentialForm.scheme = password_manager::PasswordForm::Scheme::kHtml;
+  }
 
   return passwordCredentialForm;
 }
 
-- (void)removeLogin:(IOSPasswordForm*)passwordForm {}
+- (void)removeLogin:(IOSPasswordForm*)passwordForm {
+    password_store_->RemoveLogin([self createCredentialForm:passwordForm]);
+}
 
-- (void)updateLogin:(IOSPasswordForm*)passwordForm {}
+- (void)updateLogin:(IOSPasswordForm*)newPasswordForm oldPasswordForm:(IOSPasswordForm*)oldPasswordForm {
+  password_store_->UpdateLoginWithPrimaryKey(
+    [self createCredentialForm:newPasswordForm],
+    [self createCredentialForm:oldPasswordForm]);
+}
 
 - (NSArray<IOSPasswordForm*>*)getSavedLogins {
   PasswordStoreConsumerHelper password_consumer;
@@ -219,6 +238,17 @@ class PasswordStoreConsumerHelper: public password_manager::PasswordStoreConsume
       password_consumer.WaitForResult();
 
   return [self onLoginsResult:credentials];
+}
+
+- (NSArray<IOSPasswordForm*>*)getSavedLoginsForURL:(NSURL*)url formScheme:(PasswordFormScheme)formScheme {
+  PasswordStoreConsumerHelper password_consumer;
+
+  password_manager::PasswordFormDigest form_digest_args = password_manager::PasswordFormDigest(
+      /*scheme*/ PasswordFormSchemeForPasswordFormDigest(formScheme),
+      /*signon_realm*/ url.spec();
+      /*url*/ net::GURLWithNSURL(url));
+
+  password_store_->GetLogins(form_digest_args, &password_consumer);
 }
 
 - (NSArray<IOSPasswordForm*>*)onLoginsResult:(std::vector<std::unique_ptr<password_manager::PasswordForm>>)results {
@@ -231,9 +261,53 @@ class PasswordStoreConsumerHelper: public password_manager::PasswordStoreConsume
         dateCreated:result.date_created.ToNSDate()
       usernameValue:base::SysNSStringToUTF16(result.username_value)
       passwordValue:base::SysNSStringToUTF16(result.password_value)
-    isBlockedByUser:result.blocked_by_user];
+    isBlockedByUser:result.blocked_by_user
+             scheme:PasswordFormSchemeFromPasswordManagerScheme(result.scheme)];
 
     [loginForms addObject:passwordForm];
   }
 }
+
+#pragma mark - Util
+
+static password_manager::PasswordForm::Scheme PasswordFormSchemeForPasswordFormDigest (
+    PasswordFormScheme scheme) {
+  switch (scheme) {
+    case PasswordFormSchemeTypeHtml:
+      return password_manager::PasswordForm::Scheme::kHtml;
+    case PasswordFormSchemeTypeBasic:
+      return password_manager::PasswordForm::Scheme::kBasic;
+    case PasswordFormSchemeTypeDigest:
+      return password_manager::PasswordForm::Scheme::kDigest;
+    case PasswordFormSchemeTypeOther:
+      return password_manager::PasswordForm::Scheme::kOther;
+    case PasswordFormSchemeUsernameOnly:
+      return password_manager::PasswordForm::Scheme::kUsernameOnly;
+    default:
+      NOTREACHED();
+  }
+}
+
+static PasswordFormScheme PasswordFormSchemeFromPasswordManagerScheme (
+    password_manager::PasswordForm::Scheme scheme) {
+  switch (scheme) {
+    case password_manager::PasswordForm::Scheme::kHtml:
+      return PasswordFormSchemeTypeHtml;
+    case password_manager::PasswordForm::Scheme::kBasic:
+      return PasswordFormSchemeTypeBasic;
+    case password_manager::PasswordForm::Scheme::kDigest:
+      return PasswordFormSchemeTypeDigest;
+    case password_manager::PasswordForm::Scheme::kOther:
+      return PasswordFormSchemeTypeOther;
+    case password_manager::PasswordForm::Scheme::kUsernameOnly:
+      return PasswordFormSchemeUsernameOnly;
+    case password_manager::PasswordForm::Scheme::kMinValue:
+      return PasswordFormSchemeTypeHtml;
+    case password_manager::PasswordForm::Scheme::kMaxValue:
+      return PasswordFormSchemeUsernameOnly;
+    default:
+      NOTREACHED();
+  }
+}
+
 @end
