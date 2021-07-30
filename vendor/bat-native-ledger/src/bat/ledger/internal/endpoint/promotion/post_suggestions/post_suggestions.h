@@ -3,8 +3,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef BRAVELEDGER_ENDPOINT_PROMOTION_POST_SUGGESTIONS_POST_SUGGESTIONS_H_
-#define BRAVELEDGER_ENDPOINT_PROMOTION_POST_SUGGESTIONS_POST_SUGGESTIONS_H_
+#ifndef BRAVE_VENDOR_BAT_NATIVE_LEDGER_SRC_BAT_LEDGER_INTERNAL_ENDPOINT_PROMOTION_POST_SUGGESTIONS_POST_SUGGESTIONS_H_
+#define BRAVE_VENDOR_BAT_NATIVE_LEDGER_SRC_BAT_LEDGER_INTERNAL_ENDPOINT_PROMOTION_POST_SUGGESTIONS_POST_SUGGESTIONS_H_
 
 #include <string>
 
@@ -54,7 +54,7 @@ class PostSuggestions {
       PostSuggestionsCallback callback);
 
  private:
-  std::string GetUrl();
+  std::string GetUrl(const credential::CredentialsRedeem& redeem);
 
   std::string GeneratePayload(
       const credential::CredentialsRedeem& redeem);
@@ -65,6 +65,8 @@ class PostSuggestions {
       const type::UrlResponse& response,
       PostSuggestionsCallback callback);
 
+  bool IsSku(const credential::CredentialsRedeem& redeem);
+
   LedgerImpl* ledger_;  // NOT OWNED
 };
 
@@ -72,4 +74,4 @@ class PostSuggestions {
 }  // namespace endpoint
 }  // namespace ledger
 
-#endif  // BRAVELEDGER_ENDPOINT_PROMOTION_POST_SUGGESTIONS_POST_SUGGESTIONS_H_
+#endif  // BRAVE_VENDOR_BAT_NATIVE_LEDGER_SRC_BAT_LEDGER_INTERNAL_ENDPOINT_PROMOTION_POST_SUGGESTIONS_POST_SUGGESTIONS_H_

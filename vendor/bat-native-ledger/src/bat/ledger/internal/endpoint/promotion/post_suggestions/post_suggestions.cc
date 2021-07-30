@@ -2,6 +2,7 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 #include "bat/ledger/internal/endpoint/promotion/post_suggestions/post_suggestions.h"
 
 #include <utility>
@@ -27,8 +28,16 @@ PostSuggestions::PostSuggestions(LedgerImpl* ledger):
 
 PostSuggestions::~PostSuggestions() = default;
 
-std::string PostSuggestions::GetUrl() {
-  return GetServerUrl("/v1/suggestions");
+bool PostSuggestions::IsSku(const credential::CredentialsRedeem& redeem) {
+  return redeem.processor == type::ContributionProcessor::UPHOLD ||
+         redeem.processor == type::ContributionProcessor::BRAVE_USER_FUNDS ||
+         redeem.processor == type::ContributionProcessor::GEMINI;
+}
+
+std::string PostSuggestions::GetUrl(
+    const credential::CredentialsRedeem& redeem) {
+  std::string path = IsSku(redeem) ? "votes" : "suggestions";
+  return GetServerUrl("/v1/" + path);
 }
 
 std::string PostSuggestions::GeneratePayload(
@@ -42,9 +51,7 @@ std::string PostSuggestions::GeneratePayload(
   }
   data.SetStringKey("channel", redeem.publisher_key);
 
-  const bool is_sku =
-      redeem.processor == type::ContributionProcessor::UPHOLD ||
-      redeem.processor == type::ContributionProcessor::BRAVE_USER_FUNDS;
+  const bool is_sku = IsSku(redeem);
 
   std::string data_json;
   base::JSONWriter::Write(data, &data_json);
@@ -95,7 +102,7 @@ void PostSuggestions::Request(
       callback);
 
   auto request = type::UrlRequest::New();
-  request->url = GetUrl();
+  request->url = GetUrl(redeem);
   request->content = GeneratePayload(redeem);
   request->content_type = "application/json; charset=utf-8";
   request->method = type::UrlMethod::POST;
