@@ -170,6 +170,7 @@ const locale = {
   connectHardwareInfo3: 'Unlock your device and select the Ethereum app.',
   connectHardwareTrezor: 'Trezor',
   connectHardwareLedger: 'Ledger',
+  connectingHardwareWallet: 'Connecting...',
 
   // Account Settings Modal
   accountSettingsDetails: 'Details',

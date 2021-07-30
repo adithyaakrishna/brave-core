@@ -6,6 +6,8 @@ import { NavButton } from '../../../../extension'
 // Styled Components
 import { DisclaimerText, InfoIcon } from '../style'
 import {
+  ConnectingButton,
+  ConnectingButtonText,
   HardwareButton,
   HardwareButtonRow,
   HardwareInfoColumn,
@@ -24,8 +26,10 @@ export default function () {
   const [selectedHardwareWallet, setSelectedHardwareWallet] =
     React.useState<HardwareWallet>(HardwareWallet.Ledger)
 
+  const [isConnecting, setIsConnecting] = React.useState<boolean>(false)
+
   const onConnectHardwareWallet = (hardware: HardwareWallet) => {
-    alert(`Connecting to ${hardware}`)
+    setIsConnecting(true)
   }
 
   const onSelectLedger = () => {
@@ -66,11 +70,17 @@ export default function () {
         </HardwareInfoColumn>
       </HardwareInfoRow>
 
-      <NavButton
-        onSubmit={onSubmit}
-        text={locale.addAccountConnect}
-        buttonType='primary'
-      />
+      {
+        isConnecting ?
+          <ConnectingButton>
+            <ConnectingButtonText>{locale.connectingHardwareWallet}</ConnectingButtonText>
+          </ConnectingButton>
+          : <NavButton
+              onSubmit={onSubmit}
+              text={locale.addAccountConnect}
+              buttonType='primary'
+            />
+      }
     </>
   )
 }

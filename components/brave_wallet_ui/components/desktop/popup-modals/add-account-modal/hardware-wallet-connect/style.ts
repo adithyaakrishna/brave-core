@@ -72,3 +72,36 @@ export const HardwareInfoColumn = styled.div`
   justify-content: flex-start;
   margin-left: 10px;
 `
+
+export const ConnectingButton = styled.button`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 22px;
+
+  border: 1px solid ${(p) => p.theme.color.interactive08};
+  box-sizing: border-box;
+  border-radius: 48px;
+
+  // Added manually
+  background-color: ${(p) => p.theme.palette.white};
+`
+
+export const ConnectingButtonText = styled.span`
+  font-family: Poppins;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+
+  /* Light Theme/Brand/interactive07 */
+  color: ${(p) => p.theme.color.interactive07};
+
+  /* Inside Auto Layout */
+  flex: none;
+  order: 1;
+  flex-grow: 0;
+  margin: 0px 8px;
+`
