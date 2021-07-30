@@ -110,12 +110,7 @@ class TorProfileManagerTest : public InProcessBrowserTest {
 
 // We don't run this test on Mac because the function GetCommandLineForRelaunch
 // isn't defined there.
-#if defined(OS_MAC)
-#define MAYBE_LaunchWithTorUrl DISABLED_LaunchWithTorUrl
-#else
-#define MAYBE_LaunchWithTorUrl LaunchWithTorUrl
-#endif
-
+#if !defined(OS_MAC)
 IN_PROC_BROWSER_TEST_F(TorProfileManagerTest, MAYBE_LaunchWithTorUrl) {
   // We should start with one normal window.
   ASSERT_EQ(1u, chrome::GetTabbedBrowserCount(browser()->profile()));
@@ -135,6 +130,7 @@ IN_PROC_BROWSER_TEST_F(TorProfileManagerTest, MAYBE_LaunchWithTorUrl) {
   ASSERT_EQ(2u, chrome::GetTotalBrowserCount());
   ASSERT_EQ(1u, chrome::GetTabbedBrowserCount(browser()->profile()));
 }
+#endif
 
 IN_PROC_BROWSER_TEST_F(TorProfileManagerTest,
                        SwitchToTorProfileShareBookmarks) {
