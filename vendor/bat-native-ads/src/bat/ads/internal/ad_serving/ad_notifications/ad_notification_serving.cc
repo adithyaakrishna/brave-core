@@ -137,6 +137,40 @@ void AdServing::MaybeServeAd() {
         BLOG(1, "Served ad notification");
         ServedAd(ad);
       });
+
+  const SegmentList interest_segments = ad_targeting_->GetInterestSegments();
+  const SegmentList intent_segments = ad_targeting_->GetIntentSegments();
+
+  eligible_ads_->Get(
+      interest_segments,
+      intent_segments,
+      [=](const bool was_allowed, const CreativeAdNotificationList& ads) {
+        if (was_allowed) {
+          p2a::RecordAdOpportunityForSegments(AdType::kAdNotification,
+                                              segments);
+        }
+
+        if (ads.empty()) {
+          BLOG(1, "Ad notification not served: No eligible ads found");
+          FailedToServeAd();
+          return;
+        }
+
+        BLOG(1, "Found " << ads.size() << " eligible ads");
+
+        // TODO(Moritz Haller): // maybe return struct not list
+        // Expect only one ad in list, so pick first
+        const CreativeAdNotificationInfo ad = ads.at(0);
+
+        if (!ServeAd(ad)) {
+          BLOG(1, "Failed to serve ad notification");
+          FailedToServeAd();
+          return;
+        }
+
+        BLOG(1, "Served ad notification");
+        ServedAd(ad);
+      });
 }
 
 void AdServing::OnAdsPerHourChanged() {

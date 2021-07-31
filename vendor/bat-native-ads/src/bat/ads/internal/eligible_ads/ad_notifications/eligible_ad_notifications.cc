@@ -5,9 +5,11 @@
 
 #include "bat/ads/internal/eligible_ads/ad_notifications/eligible_ad_notifications.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
+#include "base/time/time.h"
 #include "bat/ads/ad_notification_info.h"
 #include "bat/ads/internal/ad_pacing/ad_pacing.h"
 #include "bat/ads/internal/ad_priority/ad_priority.h"
@@ -75,7 +77,148 @@ void EligibleAds::GetForSegments(const SegmentList& segments,
   });
 }
 
+void EligibleAds::Get(const SegmentList& interest_segments,
+                      const SegmentList& intent_segments,
+                      GetEligibleAdsCallback callback) {
+  database::table::AdEvents database_table;
+  database_table.GetAll([=](const Result result, const AdEventList& ad_events) {
+    if (result != Result::SUCCESS) {
+      BLOG(1, "Failed to get ad events");
+      callback(/* was_allowed */ false, {});
+      return;
+    }
+
+    const int max_count = features::GetBrowsingHistoryMaxCount();
+    const int days_ago = features::GetBrowsingHistoryDaysAgo();
+    AdsClientHelper::Get()->GetBrowsingHistory(
+        max_count, days_ago, [=](const BrowsingHistoryList& history) {
+          GetEligibleAds(segments, ad_events, history, callback);
+        });
+  });
+}
+
 ///////////////////////////////////////////////////////////////////////////////
+
+void EligibleAds::GetEligibleAds(
+    const SegmentList& interest_segments,
+    const SegmentList& intent_segments,
+    const AdEventList& ad_events,
+    const BrowsingHistoryList& browsing_history,
+    GetEligibleAdsCallback callback) const {
+  DCHECK(!segments.empty());  // TODO(Moritz Haller): still needed?
+
+  BLOG(1, "Get eligible ads");
+
+  database::table::CreativeAdNotifications database_table;
+  database_table.GetAll(
+      [=](const Result result, const SegmentList& segments,
+          const CreativeAdNotificationList& ads) {
+        CreativeAdNotificationList eligible_ads =
+            FilterIneligibleAds(ads, ad_events, browsing_history);
+
+        if (eligible_ads.empty()) {
+          BLOG(1, "No eligible ads");
+          // TODO(Moritz Haller): Still need to callback to fail in serving.cc
+          callback(/* was_allowed */ true, eligible_ads);
+        }
+
+        SampleFromEligibleAds(eligible_ads, ad_events, segments, callback);
+      });
+}
+
+void EligibleAds::SampleFromEligibleAds(
+    const CreativeAdNotificationList& eligible_ads,
+    const AdEventList& ad_events,
+    const SegmentList& interest_segments,
+    const SegmentList& intent_segments,
+    GetEligibleAdsCallback callback) const {
+  DCHECK(!eligible_ads.empty());
+
+  // Sort events by date descending (latest first)
+  std::sort(ad_events.begin(), ad_events.end(), [](
+      const AdEventInfo lhs, const AdEventInfo rhs) {
+        return lhs.timestamp > rhs.timestamp;
+  });
+
+  CandidateAdNotificationMap candidate_ad_notifications;
+
+  for (const auto& creative_ad_notification : creative_ad_notifications) {
+    const auto iter = candidate_ad_notifications.find(
+        creative_ad_notification.creative_instance_id);
+    if (iter != candidate_ad_notifications.end()) {
+      iter->second.segments.push_back(creative_ad_notification.segment);
+
+      SegmentList interest_parent_segments =
+          GetParentSegments(interest_segments);
+      SegmentList intent_parent_segments =
+          GetParentSegments(intent_segments);
+
+      if (std::find(interest_segments.begin(), interest_segments.end(),
+          creative_ad_notification.segment) != interest_segments.end()) {
+        iter->second.matches_interest_child_segment = true;
+      } else if (std::find(interest_parent_segments.begin(),
+          interest_parent_segments.end(), creative_ad_notification.segment) !=
+              interest_parent_segments.end()) {
+        iter->second.matches_interest_parent_segment = true;
+      } else if (std::find(intent_segments.begin(), intent_segments.end(),
+          creative_ad_notification.segment) != intent_segments.end()) {
+        iter->second.matches_intent_child_segment = true;
+      } else if (std::find(intent_parent_segments.begin(),
+          intent_parent_segments.end(), creative_ad_notification.segment) !=
+              intent_parent_segments.end()) {
+        iter->second.matches_intent_parent_segment = true;
+      }
+
+      continue;
+    }
+
+    CandidateAdNotificationInfo candidate_ad_notification;
+    candidate_ad_notification.creative_instance_id =
+        creative_ad_notification.creative_instance_id;
+    candidate_ad_notification.advertiser_id =
+        creative_ad_notification.advertiser_id;
+    candidate_ad_notification.priority = creative_ad_notification.priority;
+    candidate_ad_notification.ptr = creative_ad_notification.ptr;
+    candidate_ad_notification.segments = { creative_ad_notification.segment };
+
+    const base::Time now = base::Time::Now();
+
+    const auto iter2 = std::find_if(ad_events.begin(), ad_events.end(),
+      [&candidate_ad_notification](const AdEventInfo& ad_event) -> bool {
+        return (ad_event.creative_instance_id ==
+            candidate_ad_notification.creative_instance_id &&
+          ad_event.confirmation_type == "view");
+      });
+
+    if (iter2 != ad_events.end()) {
+      candidate_ad_notification.ad_last_seen_in_hours =
+          (now - iter2->timestamp) / 60.0 / 60.0;
+    }
+
+    const auto iter3 = std::find_if(ad_events.begin(), ad_events.end(),
+      [&candidate_ad_notification](const AdEventInfo& ad_event) -> bool {
+        return (ad_event.advertiser_id ==
+            candidate_ad_notification.advertiser_id &&
+          ad_event.confirmation_type == "view");
+      });
+
+    if (iter3 != ad_events.end()) {
+      candidate_ad_notification.advertiser_last_seen_in_hours =
+        (now - iter3->timestamp) / 60.0 / 60.0;
+    }
+
+    candidate_ad_notifications.insert({
+      candidate_ad_notification.creative_instance_id, candidate_ad_notification
+    });
+  }
+
+  CreativeAdNotificationList sampled_ads;
+
+  // TODO(Moritz Haller): Sample ad
+
+  sampled_ads.push_back(eligible_ads.at(0));
+  callback(/* was_allowed */ true, eligible_ads);
+}
 
 void EligibleAds::GetForParentChildSegments(
     const SegmentList& segments,

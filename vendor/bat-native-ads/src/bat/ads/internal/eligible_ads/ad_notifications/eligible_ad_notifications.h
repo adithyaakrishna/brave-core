@@ -41,6 +41,10 @@ class EligibleAds {
   void GetForSegments(const SegmentList& segments,
                       GetEligibleAdsCallback callback);
 
+  void Get(const SegmentList& interest_segments,
+           const SegmentList& intent_segments,
+           GetEligibleAdsCallback callback);
+
  private:
   ad_targeting::geographic::SubdivisionTargeting*
       subdivision_targeting_;  // NOT OWNED
@@ -48,6 +52,18 @@ class EligibleAds {
   resource::AntiTargeting* anti_targeting_resource_;  // NOT OWNED
 
   CreativeAdInfo last_served_creative_ad_;
+
+  void GetEligibleAds(const SegmentList& interest_segments,
+                      const SegmentList& intent_segments,
+                      const AdEventList& ad_events,
+                      const BrowsingHistoryList& browsing_history,
+                      GetEligibleAdsCallback callback) const;
+
+  void SampleFromEligibleAds(const CreativeAdNotificationList& eligible_ads,
+                             const AdEventList& ad_events,
+                             const SegmentList& interest_segments,
+                             const SegmentList& intent_segments,
+                             GetEligibleAdsCallback callback) const;
 
   void GetForParentChildSegments(const SegmentList& segments,
                                  const AdEventList& ad_events,
