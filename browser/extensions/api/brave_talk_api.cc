@@ -17,7 +17,7 @@ namespace extensions {
 namespace api {
 
 ExtensionFunction::ResponseAction
-BraveTogetherIsSupportedFunction::Run() {
+BraveTalkIsSupportedFunction::Run() {
   Profile* profile = Profile::FromBrowserContext(browser_context());
 
   if (profile->IsTor()) {

@@ -58,12 +58,12 @@ export async function getInitialData (): Promise<InitialData> {
       torTabDataAPI.getTorTabData(),
       !isIncognito ? brandedWallpaper.getBrandedWallpaper() : Promise.resolve(undefined),
       new Promise((resolve) => {
-        if (!('braveTogether' in chrome)) {
+        if (!('braveTalk' in chrome)) {
           resolve(false)
           return
         }
 
-        chrome.braveTogether.isSupported((supported: boolean) => {
+        chrome.braveTalk.isSupported((supported: boolean) => {
           resolve(supported)
         })
       }),
