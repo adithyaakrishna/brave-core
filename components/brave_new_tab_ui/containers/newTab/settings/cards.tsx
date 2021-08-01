@@ -113,10 +113,10 @@ class CardsSettings extends React.PureComponent<Props, {}> {
               <StyledBannerImage src={togetherBanner} />
               <StyledSettingsInfo>
                 <StyledSettingsTitle>
-                  {getLocale('togetherWidgetTitle')}
+                  {getLocale('braveTalkWidgetTitle')}
                 </StyledSettingsTitle>
                 <StyledSettingsCopy>
-                  {getLocale('togetherWidgetWelcomeTitle')}
+                  {getLocale('braveTalkWidgetWelcomeTitle')}
                 </StyledSettingsCopy>
               </StyledSettingsInfo>
               {this.renderToggleButton(showTogether, toggleShowTogether)}

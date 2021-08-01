@@ -21,13 +21,13 @@ const TogetherTooltip: React.FunctionComponent<Props> = function (props) {
       <S.Tooltip>
         <S.Title>
           <S.TitleIcon><TogetherIcon /></S.TitleIcon>
-          {getLocale('togetherPromptTitle')}
+          {getLocale('braveTalkPromptTitle')}
         </S.Title>
         <S.Body>
-          {getLocale('togetherPromptDescription')}
+          {getLocale('braveTalkPromptDescription')}
         </S.Body>
         <LinkButton href={braveTalkWidgetUrl}>
-          {getLocale('togetherPromptAction')}
+          {getLocale('braveTalkPromptAction')}
         </LinkButton>
         <S.CloseButton
           onClick={props.onClose}

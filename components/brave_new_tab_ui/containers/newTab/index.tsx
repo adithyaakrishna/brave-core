@@ -863,7 +863,7 @@ class NewTabPage extends React.Component<Props, State> {
         isCrypto={true}
         paddingType={'none'}
         menuPosition={'left'}
-        widgetTitle={getLocale('togetherWidgetTitle')}
+        widgetTitle={getLocale('braveTalkWidgetTitle')}
         isForeground={showContent}
         stackPosition={position}
         textDirection={textDirection}

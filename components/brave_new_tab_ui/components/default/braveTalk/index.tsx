@@ -31,7 +31,7 @@ interface Props {
 class Together extends React.PureComponent<Props, {}> {
 
   getButtonText = () => {
-    return getLocale('togetherWidgetStartButton')
+    return getLocale('braveTalkWidgetStartButton')
   }
 
   renderTitle () {
@@ -42,7 +42,7 @@ class Together extends React.PureComponent<Props, {}> {
             <BraveTogetherIcon />
           </TogetherIcon>
           <>
-            {getLocale('togetherWidgetTitle')}
+            {getLocale('braveTalkWidgetTitle')}
           </>
         </StyledTitle>
       </Header>
@@ -78,11 +78,11 @@ class Together extends React.PureComponent<Props, {}> {
           {this.renderTitle()}
           <Content>
             <WelcomeText>
-              {getLocale('togetherWidgetWelcomeTitle')}
+              {getLocale('braveTalkWidgetWelcomeTitle')}
             </WelcomeText>
             <ActionsWrapper>
               <CallButton onClick={this.shouldCreateCall}>
-                {getLocale('togetherWidgetStartButton')}
+                {getLocale('braveTalkWidgetStartButton')}
               </CallButton>
               <Privacy>
                 <PrivacyLink
@@ -90,7 +90,7 @@ class Together extends React.PureComponent<Props, {}> {
                   target={'_blank'}
                   href={'https://brave.com/privacy/#brave-together-learn'}
                 >
-                  {getLocale('togetherWidgetAboutData')}
+                  {getLocale('braveTalkWidgetAboutData')}
                 </PrivacyLink>
               </Privacy>
             </ActionsWrapper>
