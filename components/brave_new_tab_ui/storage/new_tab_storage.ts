@@ -222,7 +222,7 @@ export const replaceStackWidgets = (state: NewTab.State) => {
     'binance': {
       display: binanceSupported && showBinance
     },
-    'together': {
+    'braveTalk': {
       display: braveTalkSupported && showBraveTalk
     }
   }

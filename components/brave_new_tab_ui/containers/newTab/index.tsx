@@ -723,7 +723,7 @@ class NewTabPage extends React.Component<Props, State> {
         display: binanceSupported && showBinance,
         render: this.renderBinanceWidget.bind(this)
       },
-      'together': {
+      'braveTalk': {
         display: braveTalkSupported && showBraveTalk,
         render: this.renderBraveTalkWidget.bind(this)
       },
@@ -869,7 +869,7 @@ class NewTabPage extends React.Component<Props, State> {
         textDirection={textDirection}
         hideWidget={this.toggleShowBraveTalk}
         showContent={showContent}
-        onShowContent={this.setForegroundStackWidget.bind(this, 'together')}
+        onShowContent={this.setForegroundStackWidget.bind(this, 'braveTalk')}
       />
     )
   }

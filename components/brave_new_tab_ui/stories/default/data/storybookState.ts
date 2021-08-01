@@ -49,10 +49,10 @@ function shouldShowBrandedWallpaperData (shouldShow: boolean): NewTab.BrandedWal
 
 function getWidgetStackOrder (firstWidget: string): NewTab.StackWidget[] {
   switch (firstWidget) {
-    case 'together':
-      return ['rewards', 'binance', 'together', 'ftx']
+    case 'braveTalk':
+      return ['rewards', 'binance', 'braveTalk', 'ftx']
     default:
-      return ['together', 'binance', 'rewards', 'ftx']
+      return ['braveTalk', 'binance', 'rewards', 'ftx']
   }
 }
 
@@ -95,7 +95,7 @@ export const getNewTabData = (state: NewTab.State = defaultState): NewTab.State 
   //   binanceSupported: boolean('Binance supported?', true)
   // },
   initialDataLoaded: true,
-  widgetStackOrder: getWidgetStackOrder(select('First widget', ['together', 'rewards'], 'rewards'))
+  widgetStackOrder: getWidgetStackOrder(select('First widget', ['braveTalk', 'rewards'], 'rewards'))
 })
 
 export const getGridSitesData = (
