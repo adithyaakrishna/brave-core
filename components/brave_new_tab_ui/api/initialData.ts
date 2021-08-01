@@ -15,7 +15,7 @@ export type InitialData = {
   privateTabData: privateTabDataAPI.PrivateTabData
   torTabData: torTabDataAPI.TorTabData
   brandedWallpaperData: undefined | NewTab.BrandedWallpaper
-  togetherSupported: boolean
+  braveTalkSupported: boolean
   geminiSupported: boolean
   binanceSupported: boolean
   cryptoDotComSupported: boolean
@@ -46,7 +46,7 @@ export async function getInitialData (): Promise<InitialData> {
       privateTabData,
       torTabData,
       brandedWallpaperData,
-      togetherSupported,
+      braveTalkSupported,
       geminiSupported,
       cryptoDotComSupported,
       ftxSupported,
@@ -95,7 +95,7 @@ export async function getInitialData (): Promise<InitialData> {
       privateTabData,
       torTabData,
       brandedWallpaperData,
-      togetherSupported,
+      braveTalkSupported,
       geminiSupported,
       cryptoDotComSupported,
       ftxSupported,

@@ -13,13 +13,13 @@ import {
   WelcomeText,
   ActionsWrapper,
   CallButton,
-  TogetherIcon,
+  BraveTalkIcon,
   StyledTitle,
   Privacy,
   PrivacyLink
 } from './style'
 import { StyledTitleTab } from '../widgetTitleTab'
-import BraveTogetherIcon from './assets/brave-talk-svg'
+import BraveTalkSvg from './assets/brave-talk-svg'
 import { braveTalkWidgetUrl } from '../../../constants/new_tab_ui'
 
 interface Props {
@@ -28,7 +28,7 @@ interface Props {
   onShowContent: () => void
 }
 
-class Together extends React.PureComponent<Props, {}> {
+class BraveTalk extends React.PureComponent<Props, {}> {
 
   getButtonText = () => {
     return getLocale('braveTalkWidgetStartButton')
@@ -38,9 +38,9 @@ class Together extends React.PureComponent<Props, {}> {
     return (
       <Header>
         <StyledTitle>
-          <TogetherIcon>
-            <BraveTogetherIcon />
-          </TogetherIcon>
+          <BraveTalkIcon>
+            <BraveTalkSvg />
+          </BraveTalkIcon>
           <>
             {getLocale('braveTalkWidgetTitle')}
           </>
@@ -100,4 +100,4 @@ class Together extends React.PureComponent<Props, {}> {
   }
 }
 
-export const TogetherWidget = createWidget(Together)
+export const BraveTalkWidget = createWidget(BraveTalk)
