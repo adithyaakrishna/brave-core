@@ -1294,6 +1294,13 @@ By installing this extension, you are agreeing to the Google Widevine Terms of U
           Bookmark All Tabs...
         </message>
       </if>
+      <!-- Brave VPN -->
+      <message name="IDS_BRAVE_VPN_TOOLBAR_BUTTON_CONNECTED_TEXT" desc="Text for vpn button in toolbar when connected.">
+        VPN
+      </message>
+      <message name="IDS_BRAVE_VPN_TOOLBAR_BUTTON_DISCONNECTED_TEXT" desc="Text for vpn button in toolbar when disconnected.">
+        Disconnected
+      </message>
       <message name="IDS_BRAVE_BOOKMARK_MANAGER_EMPTY_LIST" desc="">
         To add a bookmark, click the bookmark button next to the address bar
       </message>
