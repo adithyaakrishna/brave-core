@@ -18,7 +18,6 @@
 using std::placeholders::_1;
 using std::placeholders::_2;
 using std::placeholders::_3;
-using std::placeholders::_4;
 
 namespace ledger {
 namespace gemini {
@@ -151,6 +150,12 @@ void GeminiAuthorization::OnFetchRecipientId(
     const std::string& recipient_id,
     const std::string& token,
     ledger::ExternalWalletAuthorizationCallback callback) {
+  if (result == type::Result::NOT_FOUND) {
+    BLOG(0, "Unverified User");
+    callback(type::Result::NOT_FOUND, {});
+    return;
+  }
+
   if (result == type::Result::EXPIRED_TOKEN) {
     BLOG(0, "Expired token");
     callback(type::Result::EXPIRED_TOKEN, {});
@@ -169,7 +174,7 @@ void GeminiAuthorization::OnFetchRecipientId(
   ledger_->gemini()->SetWallet(wallet_ptr->Clone());
 
   auto url_callback = std::bind(&GeminiAuthorization::OnPostAccount, this, _1,
-                                _2, _3, _4, token, callback);
+                                _2, _3, token, callback);
   gemini_server_->post_account()->Request(token, url_callback);
 }
 
@@ -177,7 +182,6 @@ void GeminiAuthorization::OnPostAccount(
     const type::Result result,
     const std::string& linking_info,
     const std::string& name,
-    const bool& verified,
     const std::string& token,
     ledger::ExternalWalletAuthorizationCallback callback) {
   if (result == type::Result::EXPIRED_TOKEN) {
@@ -197,8 +201,6 @@ void GeminiAuthorization::OnPostAccount(
 
   wallet_ptr->token = token;
   wallet_ptr->user_name = name;
-  wallet_ptr->status =
-      verified ? type::WalletStatus::VERIFIED : type::WalletStatus::CONNECTED;
 
   ledger_->gemini()->SetWallet(wallet_ptr->Clone());
 
